@@ -28,6 +28,7 @@ class Request:
     port: int
     name: str
     type: str
+    hit: bool
     timeout: float = field(
         default_factory=_expiry_factory(DEFAULT_REQUEST_EXPIRY)
     )

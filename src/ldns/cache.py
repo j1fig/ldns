@@ -2,7 +2,7 @@ from time import time
 from typing import List
 import sqlite3
 
-from ldns import config, record
+from ldns import config, domain
 
 
 SCHEMA_STATEMENT = """
@@ -48,7 +48,7 @@ def init(conn: sqlite3.Connection):
             raise
 
 
-def set(conn: sqlite3.Connection, r: record.Record):
+def set(conn: sqlite3.Connection, r: domain.Record):
     with conn:
         try:
             conn.execute(INSERT_STATEMENT, (r.name, r.type, r.data, r.expiry,))
@@ -58,13 +58,13 @@ def set(conn: sqlite3.Connection, r: record.Record):
             raise
 
 
-def get(conn: sqlite3.Connection, name: str) -> List[record.Record]:
+def get(conn: sqlite3.Connection, name: str) -> List[domain.Record]:
     with conn:
         now = time()
         try:
             rows = conn.execute(SELECT_STATEMENT, (name, now,))
             return [
-                record.Record(
+                domain.Record(
                     name=r[0],
                     type=r[1],
                     data=r[2],

@@ -12,5 +12,5 @@ PUBLIC_RESOLVERS = [
 
 
 def get_db_path():
-    base_dir = user_data_dir(APP_NAME)
+    base_dir = user_data_dir(APP_NAME, ensure_exists=True)
     return os.path.join(base_dir, DB_FILENAME)

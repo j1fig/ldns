@@ -1,3 +1,4 @@
+import random
 import socket
 
 from dnslib import (
@@ -8,7 +9,8 @@ from dnslib import (
     QTYPE
 )
 
-from ldns.util import log, config, cache
+from ldns import config, cache, service
+from ldns.util import log
 
 
 UDP_RCV_BUFFER_SIZE = 1024
@@ -20,39 +22,40 @@ def bind_and_receive():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as udp_sock, cache.conn() as conn:
         udp_sock.bind(UDP_RCV_ADDR)
         log("server running on port 53.")
-        log(f"local cache")
+
+        cache.init(conn)
+        log("DNS cache initialized.")
 
         while True:
             packet, addr = udp_sock.recvfrom(UDP_RCV_BUFFER_SIZE)
+
+            req = DNSRecord.parse(packet)
+            log(f"lookup request from {addr[0]}:{addr[1]}\n{req.header}")
+            # TODO log request to DB.
+
 
             # TODO distinguish upstream replies from downstream requests
             # match addr:
             #     case addr[0] in config.PUBLIC_RESOLVERS:
             #         # TODO store resolver answers in cache.
             #         # TODO reply to waiting requests.
-            
-            req = DNSRecord.parse(packet)
-            log(f"lookup request from {addr[0]}:{addr[1]}\n{req.header}")
 
-            resp = DNSRecord(
-                header=DNSHeader(id=req.header.id, qr=1, aa=1, ra=1),
-                q=req.q,
-            )
+            # a single cache miss will return an empty list here.
+            # we take a pessimistic approach here, in that if there
+            # is a single miss, we refresh the whole cache for the
+            # affected names/types.
+            hits = service.get_full_hit_or_miss(conn, req)
 
-            question_names = set([q.qname for q in req.questions])
-
-            log(f"searching cache for {', '.join(question_names)}")
-            cache_records = [
-                r
-                for r in cache.get(conn, n)
-                for n in question_names
-            ]
-
-            # TODO match entries to name/type questions
-            # hits = [
-            #     r
-            #     for r in cache_records
-            #     if r.name
-            # ]
-            # TODO if all questions cached reply to downstream
-            # TODO if any leftover unanswered questions we forward all questions to public resolvers
+            match hits:
+                case [_, *_]:
+                    # TODO if all questions cached reply to downstream
+                    resp = DNSRecord(
+                        header=DNSHeader(id=req.header.id, qr=1, aa=1, ra=1),
+                        q=req.q,
+                    )
+                case []:
+                    # we forward the full downstream request to a public resolver
+                    resolver_host = random.choice(config.PUBLIC_RESOLVERS)
+                    resolver_port = 53
+                    resolver_addr = (resolver_host, resolver_port)
+                    udp_sock.sendto(req.pack(), resolver_addr)

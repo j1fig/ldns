@@ -1,6 +1,6 @@
 import pytest
 
-from ldns import cache, record
+from ldns import cache, domain
 
 
 TEST_DB = ":memory:"
@@ -17,7 +17,7 @@ def conn():
 
 
 def test_set_record(conn):
-    r = record.Record('google.com.', 'A', '64.233.185.102')
+    r = domain.Record('google.com.', 'A', '64.233.185.102')
     cache.set(conn, r)
 
     entries = cache.get(conn, "google.com.")
@@ -31,9 +31,9 @@ def test_gets_no_records(conn):
 
 
 def test_gets_records(conn):
-    r1 = record.Record('google.com.', 'A',      '64.233.185.102')
-    r2 = record.Record('google.com.', 'A',      '142.250.201.78')
-    r3 = record.Record('google.com.', 'AAAA',   '2a00:1450:4003:808::200e')
+    r1 = domain.Record('google.com.', 'A',      '64.233.185.102')
+    r2 = domain.Record('google.com.', 'A',      '142.250.201.78')
+    r3 = domain.Record('google.com.', 'AAAA',   '2a00:1450:4003:808::200e')
     cache.set(conn, r1)
     cache.set(conn, r2)
     cache.set(conn, r3)
@@ -44,12 +44,12 @@ def test_gets_records(conn):
 
 def test_gets_no_stale_records(conn, freezer):
     freezer.move_to('2025-05-21')
-    r1 = record.Record('google.com.', 'A',      '64.233.185.102')
+    r1 = domain.Record('google.com.', 'A',      '64.233.185.102')
     cache.set(conn, r1)
 
     freezer.move_to('2025-05-22')
-    r2 = record.Record('google.com.', 'A',      '142.250.201.78')
-    r3 = record.Record('google.com.', 'AAAA',   '2a00:1450:4003:808::200e')
+    r2 = domain.Record('google.com.', 'A',      '142.250.201.78')
+    r3 = domain.Record('google.com.', 'AAAA',   '2a00:1450:4003:808::200e')
     cache.set(conn, r2)
     cache.set(conn, r3)
 
